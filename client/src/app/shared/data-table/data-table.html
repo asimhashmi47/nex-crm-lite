@@ -1,0 +1,638 @@
+<div class="card">
+  <!-- Toolbar -->
+  <div class="flex flex-wrap items-center gap-2 px-3 py-2.5 border-b border-line">
+    @if (title()) {
+      <div class="flex items-center gap-2 mr-1">
+        <h2 class="text-sm font-bold text-ink">{{ title() }}</h2>
+        <span class="badge tone-gray tabular" aria-live="polite">{{
+          total().toLocaleString()
+        }}</span>
+      </div>
+    }
+    <label class="relative flex-1 min-w-48 max-w-80">
+      <span class="sr-only">Search</span>
+      <lucide-icon
+        name="search"
+        [size]="15"
+        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none"
+      />
+      <input
+        data-search
+        class="input input-sm pl-9"
+        type="search"
+        [value]="initialSearch()"
+        placeholder="Search all text columns"
+        (input)="onSearch($any($event.target).value)"
+      />
+    </label>
+
+    <div class="relative" data-menu>
+      <button
+        type="button"
+        class="btn btn-neutral btn-sm"
+        [class.!border-brand]="rules().length"
+        (click)="openFilters(); $event.stopPropagation()"
+        [attr.aria-expanded]="menu() === 'filters'"
+      >
+        <lucide-icon name="list-filter" [size]="14" /> Advanced filter
+        @if (rules().length) {
+          <span class="badge tone-brand !h-4 !px-1.5">{{ rules().length }}</span>
+        }
+      </button>
+    </div>
+
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm"
+      (click)="showFilterRow.set(!showFilterRow())"
+      [attr.aria-pressed]="showFilterRow()"
+      title="Show or hide the column search row"
+    >
+      <lucide-icon name="text-search" [size]="14" /> Column search
+    </button>
+
+    <div class="ml-auto flex items-center gap-1.5">
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon"
+        (click)="reload()"
+        title="Refresh"
+        aria-label="Refresh"
+      >
+        <lucide-icon
+          name="refresh-cw"
+          [size]="14"
+          [class.animate-spin]="loading() && !firstLoad()"
+        />
+      </button>
+
+      <div class="relative" data-menu>
+        <button
+          type="button"
+          class="btn btn-neutral btn-sm"
+          (click)="toggleMenu('columns', $event)"
+          [attr.aria-expanded]="menu() === 'columns'"
+        >
+          <lucide-icon name="columns-3" [size]="14" /> Columns
+        </button>
+        @if (menu() === 'columns') {
+          <div
+            class="menu-pop absolute right-0 mt-1 w-56 max-h-80 overflow-auto enter-fade"
+            role="menu"
+          >
+            <p class="px-2.5 py-1.5 text-2xs font-semibold text-muted">Visible columns</p>
+            @for (c of columns(); track c.key) {
+              <label class="menu-item">
+                <input
+                  type="checkbox"
+                  class="accent-brand size-3.5"
+                  [checked]="!hiddenCols().has(c.key)"
+                  (change)="toggleColumn(c.key)"
+                />
+                {{ c.label }}
+              </label>
+            }
+          </div>
+        }
+      </div>
+
+      @if (exportable()) {
+        <div class="relative" data-menu>
+          <button
+            type="button"
+            class="btn btn-success btn-sm"
+            (click)="toggleMenu('export', $event)"
+            [disabled]="!!exporting()"
+            [attr.aria-expanded]="menu() === 'export'"
+          >
+            @if (exporting()) {
+              <span class="spinner"></span>
+            } @else {
+              <lucide-icon name="file-spreadsheet" [size]="14" />
+            }
+            Download
+            <lucide-icon name="chevron-down" [size]="13" />
+          </button>
+          @if (menu() === 'export') {
+            <div class="menu-pop absolute right-0 mt-1 w-52 enter-fade" role="menu">
+              <button type="button" class="menu-item" role="menuitem" (click)="export('xlsx')">
+                <lucide-icon name="file-spreadsheet" [size]="15" class="text-ok" /> Excel (.xlsx)
+              </button>
+              <button type="button" class="menu-item" role="menuitem" (click)="export('csv')">
+                <lucide-icon name="file-text" [size]="15" class="text-info" /> CSV
+              </button>
+              <p class="px-2.5 pt-1.5 pb-1 text-2xs text-muted border-t border-line mt-1">
+                Exports all {{ total().toLocaleString() }} filtered rows with the visible columns.
+              </p>
+            </div>
+          }
+        </div>
+      }
+
+      @for (t of toolbarTpl(); track $index) {
+        <ng-container [ngTemplateOutlet]="t.tpl" />
+      }
+    </div>
+  </div>
+
+  <!-- Advanced filter builder (inline, not modal) -->
+  @if (menu() === 'filters') {
+    <div class="px-3 py-3 border-b border-line bg-subtle/60 enter-fade" data-menu>
+      <div class="flex items-center gap-2 mb-2.5">
+        <p class="text-xs font-semibold text-ink-2">Show rows that match</p>
+        <div class="tabs">
+          <button
+            type="button"
+            class="tab"
+            [class.active]="draftLogic === 'and'"
+            (click)="draftLogic = 'and'"
+          >
+            all rules
+          </button>
+          <button
+            type="button"
+            class="tab"
+            [class.active]="draftLogic === 'or'"
+            (click)="draftLogic = 'or'"
+          >
+            any rule
+          </button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        @for (r of draftRules; track $index; let i = $index) {
+          <div class="flex flex-wrap items-center gap-2">
+            <select
+              class="select input-sm !w-44"
+              [(ngModel)]="r.field"
+              (ngModelChange)="onRuleField(r)"
+              [attr.aria-label]="'Rule ' + (i + 1) + ' field'"
+            >
+              @for (c of filterableColumns(); track c.key) {
+                <option [value]="c.key">{{ c.label }}</option>
+              }
+            </select>
+            <select class="select input-sm !w-40" [(ngModel)]="r.operator" aria-label="Operator">
+              @for (o of opsFor(r.field); track o.value) {
+                <option [value]="o.value">{{ o.label }}</option>
+              }
+            </select>
+            @if (needsValue(r) >= 1) {
+              @if (kindOf(col(r.field)) === 'enum') {
+                <select class="select input-sm !w-44" [(ngModel)]="r.value" aria-label="Value">
+                  <option value="">Choose…</option>
+                  @for (o of col(r.field)?.options ?? []; track o) {
+                    <option [value]="o">{{ humanize(o) }}</option>
+                  }
+                </select>
+              } @else {
+                <input
+                  class="input input-sm !w-44"
+                  [type]="inputTypeFor(r.field)"
+                  [(ngModel)]="r.value"
+                  placeholder="Value"
+                  aria-label="Value"
+                  (keydown.enter)="applyRules()"
+                />
+              }
+            }
+            @if (needsValue(r) === 2) {
+              <span class="text-xs text-muted">and</span>
+              <input
+                class="input input-sm !w-44"
+                [type]="inputTypeFor(r.field)"
+                [(ngModel)]="r.value2"
+                placeholder="Value"
+                aria-label="Second value"
+                (keydown.enter)="applyRules()"
+              />
+            }
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm btn-icon"
+              (click)="removeRule(i)"
+              aria-label="Remove rule"
+            >
+              <lucide-icon name="x" [size]="14" />
+            </button>
+          </div>
+        }
+      </div>
+      <div class="flex items-center gap-2 mt-3">
+        <button type="button" class="btn btn-ghost btn-sm" (click)="addRule()">
+          <lucide-icon name="plus" [size]="14" /> Add rule
+        </button>
+        <div class="ml-auto flex gap-2">
+          <button type="button" class="btn btn-neutral btn-sm" (click)="clearRules()">
+            Clear rules
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" (click)="applyRules()">
+            <lucide-icon name="check" [size]="14" /> Apply filter
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Active filter chips -->
+  @if (activeFilterCount() || search()) {
+    <div class="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b border-line">
+      @if (search()) {
+        <span class="badge tone-gray !h-6">Search: “{{ search() }}”</span>
+      }
+      @for (e of colFilterEntries(); track e[0]) {
+        <span class="badge tone-brand !h-6 !pr-1"
+          >{{ describeColFilter(e[0], e[1]) }}
+          <button
+            type="button"
+            class="rounded-full hover:bg-white/70 p-0.5"
+            (click)="clearColFilter(e[0])"
+            [attr.aria-label]="'Remove filter on ' + e[0]"
+          >
+            <lucide-icon name="x" [size]="11" />
+          </button>
+        </span>
+      }
+      @for (r of rules(); track $index; let i = $index) {
+        <span class="badge tone-plum !h-6 !pr-1"
+          >{{ i > 0 ? (logic() === 'and' ? 'and ' : 'or ') : '' }}{{ describeRule(r) }}
+          <button
+            type="button"
+            class="rounded-full hover:bg-white/70 p-0.5"
+            (click)="removeAppliedRule(i)"
+            aria-label="Remove rule"
+          >
+            <lucide-icon name="x" [size]="11" />
+          </button>
+        </span>
+      }
+      <button
+        type="button"
+        class="text-2xs font-semibold text-brand-ink hover:underline ml-1"
+        (click)="clearAll()"
+      >
+        Clear all
+      </button>
+    </div>
+  }
+
+  <!-- Table -->
+  <div class="overflow-x-auto relative">
+    <table class="w-full text-[13px] border-collapse">
+      <thead class="bg-subtle/70">
+        <tr>
+          @for (c of visibleColumns(); track c.key) {
+            <th
+              scope="col"
+              class="h-9 px-3 text-left font-semibold text-2xs text-muted whitespace-nowrap border-b border-line"
+              [style.width]="c.width"
+              [class.text-right]="isNumeric(c)"
+              [attr.aria-sort]="
+                sortBy() === c.key ? (sortDesc() ? 'descending' : 'ascending') : 'none'
+              "
+            >
+              @if (c.sortable !== false) {
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 hover:text-ink cursor-pointer"
+                  [class.flex-row-reverse]="isNumeric(c)"
+                  [class.text-ink]="sortBy() === c.key"
+                  (click)="sort(c)"
+                >
+                  {{ c.label }}
+                  @if (sortBy() === c.key) {
+                    <lucide-icon
+                      [name]="sortDesc() ? 'arrow-down' : 'arrow-up'"
+                      [size]="12"
+                      class="text-brand"
+                    />
+                  } @else {
+                    <lucide-icon name="chevrons-up-down" [size]="12" class="opacity-40" />
+                  }
+                </button>
+              } @else {
+                {{ c.label }}
+              }
+            </th>
+          }
+          @if (actionsTpl().length) {
+            <th class="h-9 px-3 border-b border-line w-px sticky right-0 bg-subtle sticky-edge">
+              <span class="sr-only">Actions</span>
+            </th>
+          }
+        </tr>
+        @if (showFilterRow()) {
+          <tr class="bg-surface">
+            @for (c of visibleColumns(); track c.key) {
+              <th class="px-1.5 py-1.5 border-b border-line font-normal">
+                @if (c.filterable !== false) {
+                  @switch (kindOf(c)) {
+                    @case ('enum') {
+                      <select
+                        class="select input-sm !h-7 !text-xs"
+                        [attr.data-colfilter]="c.key"
+                        [value]="colFilters()[c.key] ?? ''"
+                        (change)="setColFilter(c.key, $any($event.target).value, false)"
+                        [attr.aria-label]="'Filter ' + c.label"
+                      >
+                        <option value="">All</option>
+                        @for (o of c.options ?? []; track o) {
+                          <option [value]="o" [selected]="colFilters()[c.key] === o">
+                            {{ humanize(o) }}
+                          </option>
+                        }
+                      </select>
+                    }
+                    @case ('bool') {
+                      <select
+                        class="select input-sm !h-7 !text-xs"
+                        [attr.data-colfilter]="c.key"
+                        [value]="colFilters()[c.key] ?? ''"
+                        (change)="setColFilter(c.key, $any($event.target).value, false)"
+                        [attr.aria-label]="'Filter ' + c.label"
+                      >
+                        <option value="">All</option>
+                        <option value="true" [selected]="colFilters()[c.key] === 'true'">
+                          Yes
+                        </option>
+                        <option value="false" [selected]="colFilters()[c.key] === 'false'">
+                          No
+                        </option>
+                      </select>
+                    }
+                    @case ('date') {
+                      <div class="flex items-center gap-1 min-w-56">
+                        <input
+                          type="date"
+                          class="input input-sm !h-7 !text-xs !px-1.5"
+                          [value]="dateRangePart(c.key, 0)"
+                          (change)="setDateRange(c.key, 0, $any($event.target).value)"
+                          [attr.aria-label]="c.label + ' from'"
+                        />
+                        <input
+                          type="date"
+                          class="input input-sm !h-7 !text-xs !px-1.5"
+                          [value]="dateRangePart(c.key, 1)"
+                          (change)="setDateRange(c.key, 1, $any($event.target).value)"
+                          [attr.aria-label]="c.label + ' to'"
+                        />
+                      </div>
+                    }
+                    @case ('number') {
+                      <input
+                        class="input input-sm !h-7 !text-xs text-right min-w-20"
+                        [attr.data-colfilter]="c.key"
+                        [value]="colFilters()[c.key] ?? ''"
+                        placeholder="e.g. >500, 10..20"
+                        (input)="setColFilter(c.key, $any($event.target).value)"
+                        [attr.aria-label]="'Filter ' + c.label"
+                      />
+                    }
+                    @default {
+                      <input
+                        class="input input-sm !h-7 !text-xs min-w-24"
+                        [attr.data-colfilter]="c.key"
+                        [value]="colFilters()[c.key] ?? ''"
+                        placeholder="Search…"
+                        (input)="setColFilter(c.key, $any($event.target).value)"
+                        [attr.aria-label]="'Filter ' + c.label"
+                      />
+                    }
+                  }
+                }
+              </th>
+            }
+            @if (actionsTpl().length) {
+              <th class="border-b border-line sticky right-0 bg-surface sticky-edge"></th>
+            }
+          </tr>
+        }
+      </thead>
+
+      <tbody [class.opacity-60]="loading() && !firstLoad()" class="transition-opacity">
+        @if (firstLoad()) {
+          @for (i of skeletonRows; track i) {
+            <tr class="border-b border-line/70">
+              @for (c of visibleColumns(); track c.key) {
+                <td class="h-10 px-3">
+                  <div
+                    class="skeleton h-3"
+                    [style.width.%]="45 + ((i * 7 + $index * 13) % 45)"
+                  ></div>
+                </td>
+              }
+              @if (actionsTpl().length) {
+                <td class="px-3 sticky right-0 bg-surface">
+                  <div class="skeleton h-3 w-12"></div>
+                </td>
+              }
+            </tr>
+          }
+        } @else {
+          @for (row of rows(); track $index) {
+            <tr
+              class="group border-b border-line/70 hover:bg-lilac-50/70 transition-colors {{
+                rowClass()(row)
+              }}"
+              [class.cursor-pointer]="clickableRows()"
+              (click)="clickableRows() && rowClick.emit(row)"
+            >
+              @for (c of visibleColumns(); track c.key) {
+                <td
+                  class="h-10 px-3 whitespace-nowrap {{ c.cellClass ?? '' }}"
+                  [class.text-right]="isNumeric(c)"
+                  [class.tabular]="isNumeric(c)"
+                >
+                  @if (tplFor(c.key); as tpl) {
+                    <ng-container
+                      [ngTemplateOutlet]="tpl"
+                      [ngTemplateOutletContext]="{ $implicit: row, value: row[c.key] }"
+                    />
+                  } @else if (c.badge && row[c.key] !== null && row[c.key] !== undefined) {
+                    <span class="badge badge-dot {{ tone(row[c.key]) }}">{{ value(row, c) }}</span>
+                  } @else {
+                    <span [class.text-faint]="row[c.key] === null || row[c.key] === undefined">{{
+                      value(row, c)
+                    }}</span>
+                  }
+                </td>
+              }
+              @if (actionsTpl().length) {
+                <td
+                  class="px-2 whitespace-nowrap text-right sticky right-0 bg-surface group-hover:bg-lilac-50 transition-colors sticky-edge"
+                  (click)="$event.stopPropagation()"
+                >
+                  <ng-container
+                    [ngTemplateOutlet]="actionsTpl()[0].tpl"
+                    [ngTemplateOutletContext]="{ $implicit: row }"
+                  />
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="visibleColumns().length + (actionsTpl().length ? 1 : 0)">
+                <div class="flex flex-col items-center justify-center py-14 text-center">
+                  <svg
+                    width="88"
+                    height="72"
+                    viewBox="0 0 88 72"
+                    fill="none"
+                    aria-hidden="true"
+                    class="mb-3"
+                  >
+                    <rect
+                      x="10"
+                      y="14"
+                      width="68"
+                      height="48"
+                      rx="10"
+                      fill="var(--color-brand-soft)"
+                    />
+                    <rect
+                      x="20"
+                      y="26"
+                      width="34"
+                      height="5"
+                      rx="2.5"
+                      fill="var(--color-line-strong)"
+                    />
+                    <rect x="20" y="36" width="48" height="5" rx="2.5" fill="var(--color-line)" />
+                    <rect x="20" y="46" width="26" height="5" rx="2.5" fill="var(--color-line)" />
+                    <circle
+                      cx="66"
+                      cy="22"
+                      r="11"
+                      fill="white"
+                      stroke="var(--color-brand)"
+                      stroke-width="3"
+                    />
+                    <path
+                      d="m74 30 7 7"
+                      stroke="var(--color-brand)"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                  @if (activeFilterCount() || search()) {
+                    <p class="text-sm font-semibold text-ink">No rows match these filters</p>
+                    <p class="text-xs text-muted mt-1">
+                      Loosen a filter or clear them to see everything.
+                    </p>
+                    <button type="button" class="btn btn-neutral btn-sm mt-3" (click)="clearAll()">
+                      Clear filters
+                    </button>
+                  } @else {
+                    <p class="text-sm font-semibold text-ink">Nothing here yet</p>
+                    <p class="text-xs text-muted mt-1">
+                      Records you add will show up in this table.
+                    </p>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+
+      @if (hasSums() && rows().length) {
+        <tfoot>
+          <tr class="bg-subtle/70 font-semibold">
+            @for (c of visibleColumns(); track c.key; let first = $first) {
+              <td
+                class="h-9 px-3 text-xs whitespace-nowrap tabular"
+                [class.text-right]="isNumeric(c)"
+              >
+                @if (c.sum) {
+                  {{ sumValue(c) }}
+                } @else if (first) {
+                  <span class="text-muted">Total (all filtered rows)</span>
+                }
+              </td>
+            }
+            @if (actionsTpl().length) {
+              <td></td>
+            }
+          </tr>
+        </tfoot>
+      }
+    </table>
+  </div>
+
+  <!-- Footer: count + pagination -->
+  <div
+    class="flex flex-wrap items-center gap-3 px-3 py-2.5 border-t border-line text-xs text-muted"
+  >
+    <span class="tabular" aria-live="polite">
+      Showing
+      <b class="text-ink">{{ rangeFrom().toLocaleString() }}–{{ rangeTo().toLocaleString() }}</b> of
+      <b class="text-ink">{{ total().toLocaleString() }}</b> rows
+    </span>
+    <label class="flex items-center gap-1.5">
+      Rows per page
+      <select
+        class="select input-sm !h-7 !w-18 !text-xs"
+        [value]="pageSize()"
+        (change)="setPageSize($any($event.target).value)"
+      >
+        @for (s of pageSizes; track s) {
+          <option [value]="s" [selected]="s === pageSize()">{{ s }}</option>
+        }
+      </select>
+    </label>
+    <nav class="ml-auto flex items-center gap-1" aria-label="Pagination">
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon"
+        [disabled]="page() === 1"
+        (click)="goTo(1)"
+        aria-label="First page"
+      >
+        <lucide-icon name="chevrons-left" [size]="14" />
+      </button>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon"
+        [disabled]="page() === 1"
+        (click)="goTo(page() - 1)"
+        aria-label="Previous page"
+      >
+        <lucide-icon name="chevron-left" [size]="14" />
+      </button>
+      @for (p of pages(); track $index) {
+        @if (p === '…') {
+          <span class="px-1">…</span>
+        } @else {
+          <button
+            type="button"
+            class="btn btn-sm min-w-8 !px-2 tabular"
+            [class.btn-primary]="p === page()"
+            [class.btn-ghost]="p !== page()"
+            (click)="goTo(+p)"
+            [attr.aria-current]="p === page() ? 'page' : null"
+          >
+            {{ p }}
+          </button>
+        }
+      }
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon"
+        [disabled]="page() >= pageCount()"
+        (click)="goTo(page() + 1)"
+        aria-label="Next page"
+      >
+        <lucide-icon name="chevron-right" [size]="14" />
+      </button>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon"
+        [disabled]="page() >= pageCount()"
+        (click)="goTo(pageCount())"
+        aria-label="Last page"
+      >
+        <lucide-icon name="chevrons-right" [size]="14" />
+      </button>
+    </nav>
+  </div>
+</div>

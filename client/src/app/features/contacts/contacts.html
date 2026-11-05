@@ -1,0 +1,161 @@
+<app-page-header
+  title="Contacts"
+  icon="contact"
+  subtitle="The people behind every account, with where they are in the journey and who owns them."
+/>
+
+<app-data-table
+  tableId="contacts"
+  title="All contacts"
+  endpoint="/api/contacts"
+  exportName="contacts"
+  [columns]="columns"
+  defaultSort="createdAt"
+  [initialSearch]="initialSearch"
+>
+  <ng-template dtToolbar>
+    <button type="button" class="btn btn-primary btn-sm" (click)="openNew()">
+      <lucide-icon name="user-plus" [size]="14" /> New contact
+    </button>
+  </ng-template>
+
+  <ng-template dtCell="name" let-row>
+    <span class="flex items-center gap-2.5">
+      <app-avatar [name]="row.name" [size]="26" />
+      <span class="font-semibold text-ink truncate max-w-48">{{ row.name }}</span>
+    </span>
+  </ng-template>
+
+  <ng-template dtCell="email" let-row>
+    <a class="text-ink-2 hover:text-brand-ink hover:underline" [href]="'mailto:' + row.email">{{
+      row.email
+    }}</a>
+  </ng-template>
+
+  <ng-template dtActions let-row>
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm btn-icon"
+      (click)="edit(row)"
+      [attr.aria-label]="'Edit ' + row.name"
+    >
+      <lucide-icon name="pencil" [size]="15" />
+    </button>
+    @if (auth.canDelete()) {
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon hover:!text-bad-ink"
+        (click)="remove(row)"
+        [attr.aria-label]="'Delete ' + row.name"
+      >
+        <lucide-icon name="trash-2" [size]="15" />
+      </button>
+    }
+  </ng-template>
+</app-data-table>
+
+<app-drawer
+  [open]="drawerOpen()"
+  [title]="editing() ? 'Edit contact' : 'New contact'"
+  [subtitle]="editing()?.name ?? 'Add someone to the address book'"
+  (close)="close()"
+>
+  <form
+    [formGroup]="form"
+    class="grid grid-cols-2 gap-x-3 gap-y-3.5"
+    (ngSubmit)="save()"
+    id="contact-form"
+    novalidate
+  >
+    <div>
+      <label class="label" for="ct-first">First name</label>
+      <input
+        id="ct-first"
+        class="input"
+        formControlName="firstName"
+        [class.invalid]="invalid('firstName')"
+      />
+      <app-field-error [control]="form.get('firstName')" label="First name" />
+    </div>
+    <div>
+      <label class="label" for="ct-last">Last name</label>
+      <input
+        id="ct-last"
+        class="input"
+        formControlName="lastName"
+        [class.invalid]="invalid('lastName')"
+      />
+      <app-field-error [control]="form.get('lastName')" label="Last name" />
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="ct-email">Email</label>
+      <input
+        id="ct-email"
+        type="email"
+        class="input"
+        formControlName="email"
+        [class.invalid]="invalid('email')"
+      />
+      <app-field-error [control]="form.get('email')" label="Email" />
+    </div>
+    <div>
+      <label class="label" for="ct-phone">Phone</label>
+      <input
+        id="ct-phone"
+        class="input"
+        formControlName="phone"
+        [class.invalid]="invalid('phone')"
+      />
+      <app-field-error [control]="form.get('phone')" label="Phone" />
+    </div>
+    <div>
+      <label class="label" for="ct-title">Job title</label>
+      <input id="ct-title" class="input" formControlName="jobTitle" />
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="ct-company">Company</label>
+      <app-lookup-select
+        inputId="ct-company"
+        formControlName="companyId"
+        [search]="searchCompanies"
+        [label]="editing()?.company ?? null"
+        placeholder="Search companies"
+      />
+    </div>
+    <div class="col-span-2">
+      <span class="label">Stage</span>
+      <div class="tabs flex-wrap">
+        @for (s of stages; track s) {
+          <button
+            type="button"
+            class="tab"
+            [class.active]="form.controls.stage.value === s"
+            (click)="form.controls.stage.setValue(s)"
+          >
+            {{ s | human }}
+          </button>
+        }
+      </div>
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="ct-owner">Owner</label>
+      <select id="ct-owner" class="select" formControlName="ownerId">
+        @for (o of owners(); track o.id) {
+          <option [ngValue]="o.id">{{ o.label }}</option>
+        }
+      </select>
+    </div>
+  </form>
+
+  <ng-container drawer-footer>
+    <button type="button" class="btn btn-neutral" (click)="close()">Cancel</button>
+    <button type="submit" form="contact-form" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <span class="spinner"></span>
+      } @else {
+        <lucide-icon name="check" [size]="15" />
+      }
+      {{ editing() ? 'Save changes' : 'Add contact' }}
+    </button>
+  </ng-container>
+</app-drawer>

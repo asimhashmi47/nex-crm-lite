@@ -1,0 +1,205 @@
+<app-page-header
+  [title]="greeting()"
+  subtitle="Your pipeline at a glance. Every card opens the records behind it."
+>
+  <a routerLink="/leads" class="btn btn-neutral"><lucide-icon name="magnet" [size]="15" /> Leads</a>
+  <a routerLink="/deals" class="btn btn-primary"
+    ><lucide-icon name="kanban" [size]="15" /> Open pipeline</a
+  >
+</app-page-header>
+
+<!-- KPI tiles -->
+<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+  @for (t of tiles(); track t.label; let i = $index) {
+    <button
+      type="button"
+      class="text-left enter-rise rounded-xl"
+      [style.animation-delay.ms]="i * 40"
+      (click)="open(t)"
+      [attr.aria-label]="t.label + ': ' + t.value"
+    >
+      <app-stat
+        [label]="t.label"
+        [value]="t.value"
+        [icon]="t.icon"
+        [tone]="t.tone"
+        [caption]="t.caption"
+        [delta]="t.delta ?? null"
+      />
+    </button>
+  } @empty {
+    @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+      <div class="skeleton h-[118px] rounded-xl"></div>
+    }
+  }
+</div>
+
+<!-- Trend -->
+<section class="card mb-4 enter-rise">
+  <header class="flex flex-wrap items-start gap-2 px-4 pt-4">
+    <div>
+      <h2 class="text-sm font-bold">Revenue and lead flow</h2>
+      <p class="text-2xs text-muted">Won revenue and new leads per month, last 12 months</p>
+    </div>
+  </header>
+  <div class="px-2 pb-2 min-h-[300px]">
+    @if (trendChart(); as o) {
+      <app-chart [options]="o" />
+    } @else {
+      <div class="skeleton h-[290px] m-2"></div>
+    }
+  </div>
+</section>
+
+<div class="grid gap-4 xl:grid-cols-[1.25fr_1fr] mb-4">
+  <!-- Pipeline funnel -->
+  <section class="card enter-rise">
+    <header class="px-4 pt-4">
+      <h2 class="text-sm font-bold">Open pipeline by stage</h2>
+      <p class="text-2xs text-muted">Value and deal count · click a stage for its deals</p>
+    </header>
+    <div class="px-2 pb-2 min-h-[250px]">
+      @if (pipelineChart(); as o) {
+        <app-chart [options]="o" />
+      } @else {
+        <div class="skeleton h-[240px] m-2"></div>
+      }
+    </div>
+  </section>
+
+  <!-- Lead sources -->
+  <section class="card enter-rise">
+    <header class="px-4 pt-4">
+      <h2 class="text-sm font-bold">Where leads come from</h2>
+      <p class="text-2xs text-muted">{{ topConversion() || 'Last 12 months' }}</p>
+    </header>
+    <div class="px-2 pb-2 min-h-[260px]">
+      @if (sourceChart(); as o) {
+        <app-chart [options]="o" />
+      } @else {
+        <div class="skeleton h-[250px] m-2"></div>
+      }
+    </div>
+  </section>
+</div>
+
+<div class="grid gap-4 xl:grid-cols-3">
+  <!-- Leaderboard -->
+  <section class="card enter-rise">
+    <header class="px-4 pt-4 pb-2">
+      <h2 class="text-sm font-bold">Leaderboard</h2>
+      <p class="text-2xs text-muted">Won in the last three months</p>
+    </header>
+    <ul class="px-4 pb-4 space-y-3">
+      @for (r of data()?.leaderboard ?? []; track r.ownerId; let i = $index) {
+        <li class="flex items-center gap-3">
+          <span class="w-4 text-2xs font-bold text-faint tabular">{{ i + 1 }}</span>
+          <app-avatar [name]="r.owner" [size]="30" />
+          <div class="flex-1 min-w-0">
+            <div class="flex items-baseline justify-between gap-2">
+              <p class="text-[13px] font-semibold truncate">{{ r.owner }}</p>
+              <p class="text-[13px] font-bold tabular">{{ r.won | money: true }}</p>
+            </div>
+            <div class="mt-1 h-1.5 rounded-full bg-lilac-50 overflow-hidden">
+              <div
+                class="h-full rounded-full transition-[width] duration-700"
+                style="background: var(--grad-brand)"
+                [style.width.%]="(r.won / maxWon()) * 100"
+              ></div>
+            </div>
+            <p class="text-2xs text-muted mt-1">
+              {{ r.deals }} won · {{ r.pipeline | money: true }} still open
+            </p>
+          </div>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <!-- Due tasks -->
+  <section class="card enter-rise">
+    <header class="flex items-start px-4 pt-4 pb-2">
+      <div>
+        <h2 class="text-sm font-bold">On your plate</h2>
+        <p class="text-2xs text-muted">Overdue and due in the next three days</p>
+      </div>
+      <a routerLink="/tasks" class="ml-auto text-2xs font-semibold text-brand-ink hover:underline"
+        >All tasks</a
+      >
+    </header>
+    <ul class="px-2 pb-3">
+      @for (t of data()?.dueTasks ?? []; track t.id) {
+        <li>
+          <a
+            routerLink="/tasks"
+            [queryParams]="{ search: t.subject }"
+            class="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-lilac-50/70 transition-colors"
+          >
+            <span class="badge {{ tone(t.type) }} w-[72px] justify-center">{{
+              t.type | human
+            }}</span>
+            <span class="flex-1 min-w-0">
+              <span class="block text-[13px] font-medium truncate">{{ t.subject }}</span>
+              <span
+                class="block text-2xs"
+                [class.text-bad-ink]="t.overdue"
+                [class.font-semibold]="t.overdue"
+                [class.text-muted]="!t.overdue"
+              >
+                {{ t.overdue ? 'Overdue · ' : '' }}{{ t.dueAt | ago
+                }}{{ t.contact ? ' · ' + t.contact : '' }}
+              </span>
+            </span>
+            @if (t.priority === 'High') {
+              <lucide-icon
+                name="flag"
+                [size]="14"
+                class="text-warn-ink"
+                aria-label="High priority"
+              />
+            }
+          </a>
+        </li>
+      } @empty {
+        <li class="px-2 py-6 text-center text-xs text-muted">Nothing due. Nice and clear.</li>
+      }
+    </ul>
+  </section>
+
+  <!-- Closing soon -->
+  <section class="card enter-rise">
+    <header class="flex items-start px-4 pt-4 pb-2">
+      <div>
+        <h2 class="text-sm font-bold">Closing in 30 days</h2>
+        <p class="text-2xs text-muted">The biggest open deals with a near close date</p>
+      </div>
+      <a routerLink="/deals" class="ml-auto text-2xs font-semibold text-brand-ink hover:underline"
+        >Board</a
+      >
+    </header>
+    <ul class="px-2 pb-3">
+      @for (d of data()?.closingSoon ?? []; track d.id) {
+        <li>
+          <a
+            routerLink="/deals"
+            [queryParams]="{ view: 'list', search: d.title }"
+            class="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-lilac-50/70 transition-colors"
+          >
+            <span class="flex-1 min-w-0">
+              <span class="block text-[13px] font-medium truncate">{{ d.title }}</span>
+              <span class="block text-2xs text-muted"
+                >{{ d.company }} · closes {{ d.expectedCloseDate | ago }}</span
+              >
+            </span>
+            <span class="text-right">
+              <span class="block text-[13px] font-bold tabular">{{ d.amount | money: true }}</span>
+              <span class="badge {{ tone(d.stage) }}">{{ d.stage }}</span>
+            </span>
+          </a>
+        </li>
+      } @empty {
+        <li class="px-2 py-6 text-center text-xs text-muted">No deals due to close this month.</li>
+      }
+    </ul>
+  </section>
+</div>

@@ -1,0 +1,226 @@
+<app-page-header
+  title="Tasks"
+  icon="list-checks"
+  subtitle="Calls, emails, meetings and follow-ups. Tick one off and the contact's last touch updates too."
+>
+  <div class="tabs" role="tablist" aria-label="Task views">
+    @for (v of views; track v.id) {
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [class.active]="view() === v.id"
+        [attr.aria-selected]="view() === v.id"
+        (click)="setView(v.id)"
+      >
+        <lucide-icon [name]="v.icon" [size]="13" /> {{ v.label }}
+      </button>
+    }
+  </div>
+</app-page-header>
+
+<!-- Re-created per view, so the view's filters apply as the grid's starting state. -->
+@for (v of [view()]; track v) {
+  <app-data-table
+    [tableId]="'tasks'"
+    title="Tasks"
+    endpoint="/api/tasks"
+    exportName="tasks"
+    [columns]="columns"
+    defaultSort="dueAt"
+    [defaultSortDesc]="v === 'done'"
+    [initialSearch]="initialSearch"
+    [initialFilters]="viewFilters()"
+    [rowClass]="rowClass"
+  >
+    <ng-template dtToolbar>
+      <button type="button" class="btn btn-primary btn-sm" (click)="openNew()">
+        <lucide-icon name="plus" [size]="14" /> New task
+      </button>
+    </ng-template>
+
+    <ng-template dtCell="isDone" let-row>
+      <button
+        type="button"
+        class="grid place-items-center size-5 rounded-md border-2 transition-colors"
+        [class]="
+          row.isDone
+            ? 'bg-ok border-ok text-white'
+            : 'border-line-strong hover:border-brand bg-surface'
+        "
+        (click)="toggle(row); $event.stopPropagation()"
+        [attr.aria-label]="(row.isDone ? 'Reopen ' : 'Complete ') + row.subject"
+        [attr.aria-pressed]="row.isDone"
+      >
+        @if (row.isDone) {
+          <lucide-icon name="check" [size]="13" [strokeWidth]="3" />
+        }
+      </button>
+    </ng-template>
+
+    <ng-template dtCell="subject" let-row>
+      <span
+        class="block font-medium text-ink truncate max-w-80"
+        [class.line-through]="row.isDone"
+        [class.text-muted]="row.isDone"
+        >{{ row.subject }}</span
+      >
+      @if (row.deal) {
+        <span class="block text-2xs text-muted truncate max-w-80">{{ row.deal }}</span>
+      }
+    </ng-template>
+
+    <ng-template dtCell="type" let-row>
+      <span class="inline-flex items-center gap-1.5 text-ink-2"
+        ><lucide-icon [name]="typeIcon[row.type]" [size]="14" class="text-brand" />
+        {{ row.type | human }}</span
+      >
+    </ng-template>
+
+    <ng-template dtCell="dueAt" let-row>
+      <span class="flex flex-col leading-tight">
+        <span [class.text-bad-ink]="row.overdue" [class.font-semibold]="row.overdue">{{
+          row.dueAt | ago
+        }}</span>
+        <span class="text-2xs text-muted">{{ row.dueAt.slice(0, 16).replace('T', ' ') }}</span>
+      </span>
+    </ng-template>
+
+    <ng-template dtActions let-row>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon"
+        (click)="edit(row)"
+        [attr.aria-label]="'Edit ' + row.subject"
+      >
+        <lucide-icon name="pencil" [size]="15" />
+      </button>
+      @if (auth.canDelete()) {
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm btn-icon hover:!text-bad-ink"
+          (click)="remove(row)"
+          [attr.aria-label]="'Delete ' + row.subject"
+        >
+          <lucide-icon name="trash-2" [size]="15" />
+        </button>
+      }
+    </ng-template>
+  </app-data-table>
+}
+
+<app-drawer
+  [open]="drawerOpen()"
+  [title]="editing() ? 'Edit task' : 'New task'"
+  [subtitle]="editing()?.subject ?? 'Plan the next step'"
+  (close)="close()"
+>
+  <form
+    [formGroup]="form"
+    class="grid grid-cols-2 gap-x-3 gap-y-3.5"
+    (ngSubmit)="save()"
+    id="task-form"
+    novalidate
+  >
+    <div class="col-span-2">
+      <label class="label" for="t-subject">Subject</label>
+      <input
+        id="t-subject"
+        class="input"
+        formControlName="subject"
+        [class.invalid]="invalid('subject')"
+        placeholder="e.g. Send the proposal"
+      />
+      <app-field-error [control]="form.get('subject')" label="Subject" />
+    </div>
+    <div class="col-span-2">
+      <span class="label">Type</span>
+      <div class="grid grid-cols-4 gap-2">
+        @for (t of types; track t) {
+          <button
+            type="button"
+            class="flex flex-col items-center gap-1 rounded-lg border py-2 text-xs font-semibold transition-colors"
+            [class]="
+              form.controls.type.value === t
+                ? 'border-brand bg-lilac-50 text-brand-ink'
+                : 'border-line text-ink-2 hover:border-lilac-300'
+            "
+            (click)="form.controls.type.setValue(t)"
+          >
+            <lucide-icon [name]="typeIcon[t]" [size]="16" /> {{ t | human }}
+          </button>
+        }
+      </div>
+    </div>
+    <div>
+      <label class="label" for="t-due">Due</label>
+      <input
+        id="t-due"
+        type="datetime-local"
+        class="input"
+        formControlName="dueAt"
+        [class.invalid]="invalid('dueAt')"
+      />
+      <app-field-error [control]="form.get('dueAt')" label="Due date" />
+    </div>
+    <div>
+      <span class="label">Priority</span>
+      <div class="tabs w-full">
+        @for (p of priorities; track p) {
+          <button
+            type="button"
+            class="tab flex-1 justify-center"
+            [class.active]="form.controls.priority.value === p"
+            (click)="form.controls.priority.setValue(p)"
+          >
+            {{ p }}
+          </button>
+        }
+      </div>
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="t-contact">Contact</label>
+      <app-lookup-select
+        inputId="t-contact"
+        formControlName="contactId"
+        [search]="searchContacts"
+        [label]="editing()?.contact ?? null"
+        placeholder="Search contacts"
+      />
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="t-deal">Deal</label>
+      <app-lookup-select
+        inputId="t-deal"
+        formControlName="dealId"
+        [search]="searchDeals"
+        [label]="editing()?.deal ?? null"
+        placeholder="Search deals"
+      />
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="t-notes">Notes</label>
+      <textarea id="t-notes" class="textarea" rows="3" formControlName="notes"></textarea>
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="t-owner">Owner</label>
+      <select id="t-owner" class="select" formControlName="ownerId">
+        @for (o of owners(); track o.id) {
+          <option [ngValue]="o.id">{{ o.label }}</option>
+        }
+      </select>
+    </div>
+  </form>
+
+  <ng-container drawer-footer>
+    <button type="button" class="btn btn-neutral" (click)="close()">Cancel</button>
+    <button type="submit" form="task-form" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <span class="spinner"></span>
+      } @else {
+        <lucide-icon name="check" [size]="15" />
+      }
+      {{ editing() ? 'Save changes' : 'Add task' }}
+    </button>
+  </ng-container>
+</app-drawer>

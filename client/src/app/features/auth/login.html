@@ -1,0 +1,140 @@
+<div class="min-h-dvh grid lg:grid-cols-[1.05fr_1fr] bg-canvas">
+  <!-- Brand panel -->
+  <section
+    class="relative hidden lg:flex flex-col justify-between overflow-hidden p-12 text-white"
+    style="background: linear-gradient(150deg, oklch(0.56 0.19 305), oklch(0.42 0.18 296))"
+  >
+    <div
+      class="absolute -right-24 -top-24 size-[420px] rounded-full border-[56px] border-white/8"
+    ></div>
+    <div
+      class="absolute -left-32 bottom-[-160px] size-[460px] rounded-full bg-lilac-300/20 blur-2xl"
+    ></div>
+
+    <div class="relative flex items-center gap-3">
+      <img src="favicon.svg" alt="" class="size-10 rounded-xl ring-2 ring-white/25" />
+      <div>
+        <p class="text-lg font-bold leading-tight">NexCRM Lite</p>
+        <p class="text-xs text-lilac-100">Sales, kept simple</p>
+      </div>
+    </div>
+
+    <div class="relative max-w-md">
+      <h1 class="text-4xl font-bold leading-[1.1] tracking-tight">
+        Leads in. Deals out.<br /><span class="text-lilac-200">Nothing in between lost.</span>
+      </h1>
+      <p class="mt-4 text-[15px] text-lilac-50/90 leading-relaxed">
+        The calm CRM for small sales teams: one pipeline, one contact book, one task list, and a
+        dashboard that tells you where the money is.
+      </p>
+
+      <ul class="mt-8 space-y-4">
+        @for (h of highlights; track h.title; let i = $index) {
+          <li class="flex gap-3 enter-rise" [style.animation-delay.ms]="120 + i * 80">
+            <span
+              class="grid place-items-center size-9 rounded-lg bg-white/15 ring-1 ring-white/20 shrink-0"
+              ><lucide-icon [name]="h.icon" [size]="17"
+            /></span>
+            <span>
+              <span class="block text-sm font-semibold">{{ h.title }}</span>
+              <span class="block text-[13px] text-lilac-100/90">{{ h.text }}</span>
+            </span>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <p class="relative text-2xs text-lilac-100/80">Angular 21 · .NET 10 · SQLite</p>
+  </section>
+
+  <!-- Form -->
+  <section class="flex items-center justify-center p-5 sm:p-10">
+    <div class="w-full max-w-sm enter-rise">
+      <div class="lg:hidden flex items-center gap-2.5 mb-8">
+        <img src="favicon.svg" alt="" class="size-9" />
+        <p class="text-lg font-bold">NexCRM <span class="text-brand">Lite</span></p>
+      </div>
+
+      <h2 class="text-2xl font-bold tracking-tight">Sign in</h2>
+      <p class="text-[13px] text-muted mt-1">Pick up where your team left off.</p>
+
+      <form class="mt-6 space-y-4" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div>
+          <label class="label" for="username">Username</label>
+          <input
+            id="username"
+            class="input h-10"
+            formControlName="username"
+            autocomplete="username"
+            [class.invalid]="form.controls.username.touched && form.controls.username.invalid"
+          />
+        </div>
+        <div>
+          <label class="label" for="password">Password</label>
+          <div class="relative">
+            <input
+              id="password"
+              class="input h-10 pr-10"
+              [type]="showPassword() ? 'text' : 'password'"
+              formControlName="password"
+              autocomplete="current-password"
+              [class.invalid]="form.controls.password.touched && form.controls.password.invalid"
+            />
+            <button
+              type="button"
+              class="absolute right-1 top-1/2 -translate-y-1/2 btn btn-ghost btn-sm btn-icon"
+              (click)="showPassword.set(!showPassword())"
+              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+            >
+              <lucide-icon [name]="showPassword() ? 'eye-off' : 'eye'" [size]="15" />
+            </button>
+          </div>
+        </div>
+
+        @if (error()) {
+          <p
+            class="flex items-center gap-2 rounded-lg bg-bad-soft text-bad-ink text-xs font-medium px-3 py-2 enter-fade"
+            role="alert"
+          >
+            <lucide-icon name="circle-alert" [size]="14" /> {{ error() }}
+          </p>
+        }
+
+        <button type="submit" class="btn btn-primary btn-lg w-full" [disabled]="busy()">
+          @if (busy()) {
+            <span class="spinner"></span> Signing in…
+          } @else {
+            Sign in <lucide-icon name="arrow-right" [size]="16" />
+          }
+        </button>
+      </form>
+
+      @if (demoAccounts().length) {
+        <div class="mt-8 rounded-xl border border-lilac-100 bg-lilac-50/70 p-3.5 enter-fade">
+          <p class="flex items-center gap-1.5 text-xs font-bold text-brand-ink">
+            <lucide-icon name="sparkles" [size]="14" /> Demo accounts
+          </p>
+          <p class="text-2xs text-muted mt-0.5">
+            The password is the same as the username. Click one to sign in.
+          </p>
+          <div class="mt-2.5 space-y-1.5">
+            @for (a of demoAccounts(); track a.username) {
+              <button
+                type="button"
+                class="w-full flex items-center gap-2.5 rounded-lg bg-surface border border-line px-2.5 py-2 text-left hover:border-lilac-300 hover:shadow-xs transition"
+                (click)="useDemo(a)"
+                [disabled]="busy()"
+              >
+                <span class="font-mono text-xs font-semibold text-brand-ink w-16">{{
+                  a.username
+                }}</span>
+                <span class="badge tone-lilac">{{ a.role }}</span>
+                <span class="text-2xs text-muted truncate flex-1">{{ a.description }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+</div>

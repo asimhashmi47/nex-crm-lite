@@ -1,0 +1,324 @@
+<app-page-header
+  title="Pipeline"
+  icon="kanban"
+  [subtitle]="
+    openCount()
+      ? openCount() + ' open deals worth ' + compact(openTotal()) + '. Drag a card to move it.'
+      : 'Every deal from first call to signature.'
+  "
+>
+  <div class="tabs" role="tablist" aria-label="Pipeline views">
+    <button
+      type="button"
+      role="tab"
+      class="tab"
+      [class.active]="view() === 'board'"
+      [attr.aria-selected]="view() === 'board'"
+      (click)="setView('board')"
+    >
+      <lucide-icon name="kanban" [size]="13" /> Board
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="tab"
+      [class.active]="view() === 'list'"
+      [attr.aria-selected]="view() === 'list'"
+      (click)="setView('list')"
+    >
+      <lucide-icon name="table" [size]="13" /> List
+    </button>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="openNew()">
+    <lucide-icon name="plus" [size]="15" /> New deal
+  </button>
+</app-page-header>
+
+@if (view() === 'board') {
+  <div class="flex items-center gap-2 mb-3 enter-fade">
+    <span class="text-xs text-muted">Showing</span>
+    <select
+      class="select input-sm !w-48"
+      [ngModel]="boardOwner()"
+      (ngModelChange)="filterOwner($event)"
+      aria-label="Filter the board by owner"
+    >
+      <option [ngValue]="null">Everyone's deals</option>
+      @for (o of owners(); track o.id) {
+        <option [ngValue]="o.id">{{ o.label }}</option>
+      }
+    </select>
+    <span class="text-2xs text-faint hidden md:inline"
+      >Won and Lost show the last 90 days. Each column lists its 40 largest deals.</span
+    >
+  </div>
+
+  <div
+    class="grid grid-flow-col auto-cols-[minmax(232px,1fr)] gap-3 overflow-x-auto pb-3 -mx-1 px-1 thin-scroll"
+  >
+    @for (col of board(); track col.stage; let i = $index) {
+      <section
+        class="flex flex-col rounded-xl bg-subtle/80 border border-line min-h-[60vh] max-h-[calc(100dvh-230px)] enter-rise transition-colors"
+        [style.animation-delay.ms]="i * 40"
+        [class.!bg-lilac-50]="dropTarget() === col.stage"
+        [class.!border-lilac-300]="dropTarget() === col.stage"
+        (dragover)="onDragOver(col.stage, $event)"
+        (dragleave)="dropTarget.set(null)"
+        (drop)="onDrop(col.stage, $event)"
+        [attr.aria-label]="col.stage + ' column'"
+      >
+        <header class="px-3 pt-3 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="size-2.5 rounded-full" [style.background]="accent[col.stage]"></span>
+            <h2 class="text-[13px] font-bold">{{ col.stage }}</h2>
+            <span class="badge tone-gray tabular">{{ col.count }}</span>
+            @if (col.stage !== 'Won' && col.stage !== 'Lost') {
+              <button
+                type="button"
+                class="ml-auto btn btn-ghost btn-sm btn-icon !size-6"
+                (click)="newInStage(col.stage)"
+                [attr.aria-label]="'New deal in ' + col.stage"
+              >
+                <lucide-icon name="plus" [size]="14" />
+              </button>
+            }
+          </div>
+          <p class="mt-1 text-xs font-semibold text-ink-2 tabular">{{ col.total | money }}</p>
+          <div class="mt-2 h-1 rounded-full" [style.background]="accent[col.stage]"></div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto px-2 pb-2 space-y-2 thin-scroll">
+          @for (card of col.cards; track card.id) {
+            <article
+              class="group rounded-lg bg-surface border border-line p-3 shadow-xs cursor-grab active:cursor-grabbing hover:border-lilac-300 hover:shadow-card transition-[border-color,box-shadow,opacity]"
+              [class.opacity-40]="dragging()?.id === card.id"
+              [class.line-flash]="flash() === card.id"
+              draggable="true"
+              (dragstart)="onDragStart(card, $event)"
+              (dragend)="onDragEnd()"
+              (dblclick)="editCard(card)"
+            >
+              <div class="flex items-start gap-2">
+                <p class="flex-1 text-[13px] font-semibold leading-snug text-ink line-clamp-2">
+                  {{ card.title }}
+                </p>
+                <button
+                  type="button"
+                  class="opacity-0 group-hover:opacity-100 focus:opacity-100 btn btn-ghost btn-sm btn-icon !size-6 -mr-1 -mt-1"
+                  (click)="editCard(card)"
+                  [attr.aria-label]="'Edit ' + card.title"
+                >
+                  <lucide-icon name="pencil" [size]="13" />
+                </button>
+              </div>
+              <p class="text-2xs text-muted mt-0.5 truncate">{{ card.company }}</p>
+              <div class="mt-2.5 flex items-center gap-2">
+                <span class="text-sm font-bold tabular">{{ card.amount | money }}</span>
+                @if (col.stage !== 'Won' && col.stage !== 'Lost') {
+                  <span class="badge tone-lilac tabular">{{ card.probability }}%</span>
+                }
+                <app-avatar
+                  class="ml-auto"
+                  [name]="card.owner"
+                  [size]="22"
+                  [attr.title]="card.owner"
+                />
+              </div>
+              <p
+                class="mt-2 flex items-center gap-1 text-2xs"
+                [class.text-bad-ink]="card.overdue"
+                [class.font-semibold]="card.overdue"
+                [class.text-muted]="!card.overdue"
+              >
+                <lucide-icon [name]="card.overdue ? 'alarm-clock' : 'calendar'" [size]="12" />
+                {{ card.overdue ? 'Close date passed ' : 'Closes '
+                }}{{ card.expectedCloseDate | ago }}
+              </p>
+            </article>
+          } @empty {
+            <div
+              class="grid place-items-center text-center rounded-lg border-2 border-dashed border-line py-10 px-3 text-xs text-muted"
+            >
+              Drop a deal here
+            </div>
+          }
+        </div>
+      </section>
+    } @empty {
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <div class="skeleton rounded-xl min-h-[60vh]"></div>
+      }
+    }
+  </div>
+} @else {
+  <app-data-table
+    tableId="deals"
+    title="All deals"
+    endpoint="/api/deals"
+    exportName="deals"
+    [columns]="columns"
+    defaultSort="createdAt"
+    [initialSearch]="initialSearch"
+    [initialFilters]="initialFilters"
+  >
+    <ng-template dtCell="title" let-row>
+      <span class="block font-semibold text-ink truncate max-w-72">{{ row.title }}</span>
+    </ng-template>
+
+    <ng-template dtActions let-row>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon"
+        (click)="edit(row)"
+        [attr.aria-label]="'Edit ' + row.title"
+      >
+        <lucide-icon name="pencil" [size]="15" />
+      </button>
+      @if (auth.canDelete()) {
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm btn-icon hover:!text-bad-ink"
+          (click)="remove(row)"
+          [attr.aria-label]="'Delete ' + row.title"
+        >
+          <lucide-icon name="trash-2" [size]="15" />
+        </button>
+      }
+    </ng-template>
+  </app-data-table>
+}
+
+<app-drawer
+  [open]="drawerOpen()"
+  [title]="editing() ? 'Edit deal' : 'New deal'"
+  [subtitle]="editing()?.company ?? 'Open a new opportunity'"
+  (close)="close()"
+>
+  <form
+    [formGroup]="form"
+    class="grid grid-cols-2 gap-x-3 gap-y-3.5"
+    (ngSubmit)="save()"
+    id="deal-form"
+    novalidate
+  >
+    <div class="col-span-2">
+      <label class="label" for="d-title">Deal title</label>
+      <input
+        id="d-title"
+        class="input"
+        formControlName="title"
+        [class.invalid]="invalid('title')"
+        placeholder="e.g. Acme - annual licence"
+      />
+      <app-field-error [control]="form.get('title')" label="Title" />
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="d-company">Company</label>
+      <app-lookup-select
+        inputId="d-company"
+        formControlName="companyId"
+        [search]="searchCompanies"
+        [label]="editing()?.company ?? null"
+        placeholder="Search companies"
+        [invalid]="invalid('companyId')"
+      />
+      <app-field-error [control]="form.get('companyId')" label="Company" />
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="d-contact">Contact</label>
+      <app-lookup-select
+        inputId="d-contact"
+        formControlName="contactId"
+        [search]="searchContacts"
+        [label]="editing()?.contact ?? null"
+        placeholder="Search people at this company"
+      />
+    </div>
+    <div>
+      <label class="label" for="d-amount">Amount (USD)</label>
+      <input
+        id="d-amount"
+        type="number"
+        min="1"
+        step="100"
+        class="input tabular"
+        formControlName="amount"
+        [class.invalid]="invalid('amount')"
+      />
+      <app-field-error [control]="form.get('amount')" label="Amount" />
+    </div>
+    <div>
+      <label class="label" for="d-close">Expected close</label>
+      <input
+        id="d-close"
+        type="date"
+        class="input"
+        formControlName="expectedCloseDate"
+        [class.invalid]="invalid('expectedCloseDate')"
+      />
+      <app-field-error [control]="form.get('expectedCloseDate')" label="Close date" />
+    </div>
+    <div class="col-span-2">
+      <span class="label">Stage</span>
+      <div class="grid grid-cols-3 gap-1.5">
+        @for (s of stages; track s) {
+          <button
+            type="button"
+            class="flex items-center gap-1.5 h-8 rounded-md border px-2 text-xs font-semibold transition-colors"
+            [class]="
+              form.controls.stage.value === s
+                ? 'border-brand bg-lilac-50 text-brand-ink'
+                : 'border-line text-ink-2 hover:border-lilac-300'
+            "
+            (click)="form.controls.stage.setValue(s)"
+          >
+            <span class="size-2 rounded-full" [style.background]="accent[s]"></span> {{ s }}
+          </button>
+        }
+      </div>
+    </div>
+    <div class="col-span-2">
+      <label class="label flex items-center justify-between" for="d-prob"
+        >Probability
+        <span class="tabular text-brand-ink font-bold"
+          >{{ form.controls.probability.value }}%</span
+        ></label
+      >
+      <input
+        id="d-prob"
+        type="range"
+        min="0"
+        max="100"
+        step="5"
+        class="w-full accent-brand"
+        formControlName="probability"
+      />
+      <p class="hint">
+        Weighted value:
+        {{
+          ((form.controls.amount.value ?? 0) * (form.controls.probability.value ?? 0)) / 100 | money
+        }}
+      </p>
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="d-owner">Owner</label>
+      <select id="d-owner" class="select" formControlName="ownerId">
+        @for (o of owners(); track o.id) {
+          <option [ngValue]="o.id">{{ o.label }}</option>
+        }
+      </select>
+    </div>
+  </form>
+
+  <ng-container drawer-footer>
+    <button type="button" class="btn btn-neutral" (click)="close()">Cancel</button>
+    <button type="submit" form="deal-form" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <span class="spinner"></span>
+      } @else {
+        <lucide-icon name="check" [size]="15" />
+      }
+      {{ editing() ? 'Save changes' : 'Add deal' }}
+    </button>
+  </ng-container>
+</app-drawer>

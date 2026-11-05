@@ -1,0 +1,262 @@
+<div class="min-h-dvh flex">
+  @if (mobileOpen()) {
+    <div
+      class="fixed inset-0 bg-ink/30 lg:hidden enter-fade"
+      style="z-index: var(--z-sidebar)"
+      (click)="mobileOpen.set(false)"
+      aria-hidden="true"
+    ></div>
+  }
+
+  <!-- Sidebar -->
+  <aside
+    class="fixed inset-y-0 left-0 flex flex-col bg-surface border-r border-line transition-[width,transform] duration-200 ease-out lg:translate-x-0"
+    [class.-translate-x-full]="!mobileOpen()"
+    [class.translate-x-0]="mobileOpen()"
+    [class.w-60]="!collapsed() || mobileOpen()"
+    [class.w-16]="collapsed() && !mobileOpen()"
+    style="z-index: calc(var(--z-sidebar) + 1)"
+    aria-label="Main navigation"
+  >
+    <div class="h-14 flex items-center gap-2.5 px-3.5 border-b border-line shrink-0">
+      <img src="favicon.svg" alt="" class="size-8 shrink-0" />
+      @if (!collapsed() || mobileOpen()) {
+        <div class="min-w-0 enter-fade">
+          <p class="font-bold text-[15px] leading-tight tracking-tight">
+            NexCRM <span class="text-brand">Lite</span>
+          </p>
+          <p class="text-2xs text-muted truncate">Sales, kept simple</p>
+        </div>
+      }
+    </div>
+
+    <nav class="flex-1 overflow-y-auto py-3 px-2.5">
+      @for (g of nav; track g.label) {
+        @if (!collapsed() || mobileOpen()) {
+          <p class="px-2.5 pt-3 pb-1 text-2xs font-semibold text-faint first:pt-0">{{ g.label }}</p>
+        } @else {
+          <div class="mx-3 my-2 border-t border-line first:hidden"></div>
+        }
+        @for (i of g.items; track i.route) {
+          <a
+            [routerLink]="i.route"
+            routerLinkActive
+            #rla="routerLinkActive"
+            class="group relative flex items-center gap-2.5 h-9 rounded-lg px-2.5 mb-0.5 text-[13px] font-semibold transition-colors"
+            [class.text-white]="rla.isActive"
+            [class.text-ink-2]="!rla.isActive"
+            [class.hover:bg-lilac-50]="!rla.isActive"
+            [class.hover:text-brand-ink]="!rla.isActive"
+            [class.justify-center]="collapsed() && !mobileOpen()"
+            [style.background]="rla.isActive ? 'var(--grad-brand)' : null"
+            [style.box-shadow]="rla.isActive ? '0 6px 14px -8px oklch(0.5 0.2 302 / 0.75)' : null"
+            [attr.title]="collapsed() ? i.label : null"
+            [attr.aria-current]="rla.isActive ? 'page' : null"
+          >
+            <lucide-icon [name]="i.icon" [size]="17" class="shrink-0" />
+            @if (!collapsed() || mobileOpen()) {
+              <span class="truncate">{{ i.label }}</span>
+            }
+          </a>
+        }
+      }
+    </nav>
+
+    @if (!collapsed() || mobileOpen()) {
+      <div class="mx-3 mb-3 rounded-xl p-3 bg-lilac-50 border border-lilac-100 enter-fade">
+        <p class="text-2xs font-semibold text-brand-ink">Open pipeline</p>
+        <p class="text-lg font-bold tabular text-ink">{{ pipelineLabel() || '…' }}</p>
+        <a routerLink="/deals" class="text-2xs font-semibold text-brand-ink hover:underline"
+          >Open the board →</a
+        >
+      </div>
+    }
+
+    <div class="p-2.5 border-t border-line hidden lg:block">
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm w-full"
+        [class.btn-icon]="collapsed()"
+        (click)="toggleCollapsed()"
+        [attr.aria-label]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
+      >
+        <lucide-icon [name]="collapsed() ? 'panel-left-open' : 'panel-left-close'" [size]="16" />
+        @if (!collapsed()) {
+          <span>Collapse</span>
+        }
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main column -->
+  <div
+    class="flex-1 min-w-0 flex flex-col transition-[padding] duration-200 ease-out"
+    [class.lg:pl-60]="!collapsed()"
+    [class.lg:pl-16]="collapsed()"
+  >
+    <header
+      class="sticky top-0 h-14 flex items-center gap-2 sm:gap-3 px-3 sm:px-5 border-b border-line/80 bg-surface/75 backdrop-blur-md"
+      style="z-index: var(--z-sticky)"
+    >
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon lg:hidden"
+        (click)="mobileOpen.set(true)"
+        aria-label="Open navigation"
+      >
+        <lucide-icon name="menu" [size]="18" />
+      </button>
+
+      <div class="relative flex-1 max-w-md" data-pop="search">
+        <lucide-icon
+          name="search"
+          [size]="15"
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none"
+        />
+        <input
+          id="global-search"
+          class="input pl-11 pr-14 bg-subtle/70 border-line"
+          type="search"
+          placeholder="Search contacts, companies, leads, deals"
+          [ngModel]="searchText()"
+          (ngModelChange)="searchText.set($event); searchOpen.set(true)"
+          (focus)="searchOpen.set(true)"
+          (keydown.enter)="submitSearch()"
+          autocomplete="off"
+          aria-label="Global search"
+        />
+        <span class="kbd absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex"
+          >Ctrl K</span
+        >
+        @if (searchOpen() && searchHits().length) {
+          <div class="menu-pop absolute left-0 right-0 mt-1 enter-fade" role="listbox">
+            @for (h of searchHits(); track h.label) {
+              <button type="button" class="menu-item" (click)="go(h.route, h.query)">
+                <lucide-icon [name]="h.icon" [size]="15" class="text-muted" /> {{ h.label }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <div
+          class="hidden sm:flex flex-col items-end leading-tight px-1 tabular"
+          aria-label="Current time"
+        >
+          <span class="text-[13px] font-bold">{{
+            now().toLocaleTimeString('en-GB', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            })
+          }}</span>
+          <span class="text-2xs text-muted">{{
+            now().toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })
+          }}</span>
+        </div>
+
+        <div class="relative" data-pop="bell">
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon relative"
+            (click)="toggleBell()"
+            [attr.aria-expanded]="bellOpen()"
+            [attr.aria-label]="
+              unseenAlerts().length ? unseenAlerts().length + ' new notifications' : 'Notifications'
+            "
+          >
+            <lucide-icon name="bell" [size]="18" />
+            @if (unseenAlerts().length) {
+              <span
+                class="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full text-[10px] font-bold text-white grid place-items-center enter-fade"
+                style="background: var(--grad-danger)"
+                >{{ unseenAlerts().length }}</span
+              >
+            }
+          </button>
+          @if (bellOpen()) {
+            <div class="menu-pop absolute right-0 mt-1 w-80 enter-fade">
+              <p class="px-2.5 py-2 text-xs font-bold text-ink">Needs your attention</p>
+              @for (a of alerts(); track a.key) {
+                <button type="button" class="menu-item !h-auto py-2" (click)="go(a.route, a.query)">
+                  <span class="size-7 rounded-md grid place-items-center shrink-0 {{ a.tone }}"
+                    ><lucide-icon [name]="a.icon" [size]="14"
+                  /></span>
+                  <span class="text-xs flex-1" [class.font-semibold]="freshKeys().has(a.key)">{{
+                    a.text
+                  }}</span>
+                  @if (freshKeys().has(a.key)) {
+                    <span class="size-1.5 rounded-full bg-brand shrink-0" aria-label="New"></span>
+                  }
+                  <lucide-icon name="chevron-right" [size]="14" class="text-faint" />
+                </button>
+              } @empty {
+                <p class="px-2.5 pb-3 text-xs text-muted">All quiet. Nothing needs attention.</p>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="relative" data-pop="user">
+          <button
+            type="button"
+            class="flex items-center gap-2 h-9 pl-1 pr-2 rounded-full hover:bg-subtle transition-colors"
+            (click)="userMenu.set(!userMenu())"
+            [attr.aria-expanded]="userMenu()"
+            aria-label="Account menu"
+          >
+            <span
+              class="size-7 rounded-full grid place-items-center text-[11px] font-bold text-white"
+              style="background: var(--grad-orchid)"
+              >{{ userInitials() }}</span
+            >
+            <span class="hidden md:flex flex-col items-start leading-tight">
+              <span class="text-xs font-bold">{{ auth.user()?.fullName }}</span>
+              <span class="text-2xs text-muted">{{ auth.user()?.role }}</span>
+            </span>
+            <lucide-icon name="chevron-down" [size]="14" class="text-muted hidden md:block" />
+          </button>
+          @if (userMenu()) {
+            <div class="menu-pop absolute right-0 mt-1 w-56 enter-fade" role="menu">
+              <div class="flex items-center gap-2.5 px-2.5 py-2 border-b border-line mb-1">
+                <app-avatar [name]="auth.user()?.fullName ?? ''" [size]="32" />
+                <div class="min-w-0">
+                  <p class="text-xs font-bold truncate">{{ auth.user()?.fullName }}</p>
+                  <p class="text-2xs text-muted truncate">{{ auth.user()?.email }}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="menu-item !text-bad-ink"
+                role="menuitem"
+                (click)="logout()"
+              >
+                <lucide-icon name="log-out" [size]="15" /> Sign out
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 w-full mx-auto max-w-[1600px] p-4 sm:p-6">
+      <router-outlet />
+    </main>
+
+    <footer class="px-5 py-3 border-t border-line text-center text-2xs text-muted bg-surface/60">
+      © {{ year }} Copyright by
+      <a
+        href="https://masimaziz.com/"
+        target="_blank"
+        rel="noopener"
+        class="font-semibold text-brand-ink hover:underline"
+        >masimaziz.com</a
+      >
+      |
+      <a href="mailto:asimhashmi47@gmail.com" class="font-semibold text-brand-ink hover:underline"
+        >asimhashmi47&#64;gmail.com</a
+      >
+    </footer>
+  </div>
+</div>

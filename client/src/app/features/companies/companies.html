@@ -1,0 +1,154 @@
+<app-page-header
+  title="Companies"
+  icon="building-2"
+  subtitle="Every account you sell to, with its people, open deals and what it has bought."
+/>
+
+<app-data-table
+  tableId="companies"
+  title="All companies"
+  endpoint="/api/companies"
+  exportName="companies"
+  [columns]="columns"
+  defaultSort="wonRevenue"
+  [initialSearch]="initialSearch"
+>
+  <ng-template dtToolbar>
+    <button type="button" class="btn btn-primary btn-sm" (click)="openNew()">
+      <lucide-icon name="plus" [size]="14" /> New company
+    </button>
+  </ng-template>
+
+  <ng-template dtCell="name" let-row>
+    <span class="flex items-center gap-2.5">
+      <app-avatar [name]="row.name" [size]="26" />
+      <span class="min-w-0">
+        <span class="block font-semibold text-ink truncate max-w-52">{{ row.name }}</span>
+        @if (row.website) {
+          <span class="block text-2xs text-muted truncate max-w-52">{{
+            row.website.replace('https://', '')
+          }}</span>
+        }
+      </span>
+    </span>
+  </ng-template>
+
+  <ng-template dtActions let-row>
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm btn-icon"
+      (click)="edit(row)"
+      [attr.aria-label]="'Edit ' + row.name"
+    >
+      <lucide-icon name="pencil" [size]="15" />
+    </button>
+    @if (auth.canDelete()) {
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon hover:!text-bad-ink"
+        (click)="remove(row)"
+        [attr.aria-label]="'Delete ' + row.name"
+      >
+        <lucide-icon name="trash-2" [size]="15" />
+      </button>
+    }
+  </ng-template>
+</app-data-table>
+
+<app-drawer
+  [open]="drawerOpen()"
+  [title]="editing() ? 'Edit company' : 'New company'"
+  [subtitle]="editing()?.name ?? 'Add an account to the book'"
+  (close)="close()"
+>
+  <form
+    [formGroup]="form"
+    class="grid grid-cols-2 gap-x-3 gap-y-3.5"
+    (ngSubmit)="save()"
+    id="company-form"
+    novalidate
+  >
+    <div class="col-span-2">
+      <label class="label" for="c-name">Company name</label>
+      <input id="c-name" class="input" formControlName="name" [class.invalid]="invalid('name')" />
+      <app-field-error [control]="form.get('name')" label="Company name" />
+    </div>
+    <div>
+      <label class="label" for="c-industry">Industry</label>
+      <select id="c-industry" class="select" formControlName="industry">
+        @for (i of industries; track i) {
+          <option [value]="i">{{ i }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label class="label" for="c-owner">Owner</label>
+      <select
+        id="c-owner"
+        class="select"
+        formControlName="ownerId"
+        [class.invalid]="invalid('ownerId')"
+      >
+        @for (o of owners(); track o.id) {
+          <option [ngValue]="o.id">{{ o.label }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label class="label" for="c-city">City</label>
+      <input id="c-city" class="input" formControlName="city" [class.invalid]="invalid('city')" />
+      <app-field-error [control]="form.get('city')" label="City" />
+    </div>
+    <div>
+      <label class="label" for="c-country">Country</label>
+      <input
+        id="c-country"
+        class="input"
+        formControlName="country"
+        [class.invalid]="invalid('country')"
+      />
+      <app-field-error [control]="form.get('country')" label="Country" />
+    </div>
+    <div>
+      <label class="label" for="c-web">Website</label>
+      <input id="c-web" class="input" formControlName="website" placeholder="https://" />
+    </div>
+    <div>
+      <label class="label" for="c-phone">Phone</label>
+      <input
+        id="c-phone"
+        class="input"
+        formControlName="phone"
+        [class.invalid]="invalid('phone')"
+      />
+      <app-field-error [control]="form.get('phone')" label="Phone" />
+    </div>
+    <div>
+      <label class="label" for="c-emp">Employees</label>
+      <input id="c-emp" type="number" min="0" class="input tabular" formControlName="employees" />
+    </div>
+    <div>
+      <label class="label" for="c-rev">Annual revenue (USD)</label>
+      <input
+        id="c-rev"
+        type="number"
+        min="0"
+        step="1000"
+        class="input tabular"
+        formControlName="annualRevenue"
+      />
+    </div>
+  </form>
+
+  <ng-container drawer-footer>
+    <button type="button" class="btn btn-neutral" (click)="close()">Cancel</button>
+    <button type="submit" form="company-form" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <span class="spinner"></span>
+      } @else {
+        <lucide-icon name="check" [size]="15" />
+      }
+      {{ editing() ? 'Save changes' : 'Add company' }}
+    </button>
+  </ng-container>
+</app-drawer>

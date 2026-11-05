@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NexCRM Lite README art</title>
+<link rel="stylesheet" href="../../client/node_modules/@fontsource-variable/geist/index.css">
+<style>
+  :root {
+    --ink: #2a2236; --muted: #6f6879; --brand: #803FC6; --deep: #5d2fa0;
+    --l50: #F1EAFF; --l100: #E5D4FF; --l200: #DCBFFF; --l300: #D0A2F7;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Geist Variable", system-ui, sans-serif; background: transparent; padding: 40px; display: grid; gap: 60px; }
+  section { display: none; }
+  section:target { display: block; }
+
+  /* Banner */
+  .banner { width: 1600px; height: 420px; border-radius: 28px; position: relative; overflow: hidden; display: flex; align-items: center; padding: 0 72px; }
+  .banner.light { background: radial-gradient(120% 140% at 0% 0%, #fff 0%, var(--l50) 45%, var(--l100) 100%); color: var(--ink); }
+  .banner.dark { background: radial-gradient(120% 140% at 0% 0%, #3b2361 0%, #26173f 55%, #1b1130 100%); color: #fff; }
+  .ring { position: absolute; border-radius: 50%; }
+  .banner .ring.a { width: 520px; height: 520px; right: -120px; top: -220px; border: 70px solid rgba(128, 63, 198, .08); }
+  .banner.dark .ring.a { border-color: rgba(208, 162, 247, .08); }
+  .banner .ring.b { width: 380px; height: 380px; left: 520px; bottom: -260px; background: rgba(208, 162, 247, .22); filter: blur(30px); }
+  .copy { position: relative; z-index: 2; width: 660px; }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo img { width: 56px; height: 56px; border-radius: 14px; box-shadow: 0 10px 24px -10px rgba(93, 47, 160, .6); }
+  .logo b { font-size: 34px; letter-spacing: -.02em; }
+  .logo b span { color: var(--brand); }
+  .dark .logo b span { color: var(--l300); }
+  h1 { font-size: 46px; line-height: 1.08; letter-spacing: -.03em; margin-top: 26px; font-weight: 700; }
+  h1 em { font-style: normal; color: var(--brand); }
+  .dark h1 em { color: var(--l200); }
+  .tag { margin-top: 14px; font-size: 19px; color: var(--muted); line-height: 1.5; }
+  .dark .tag { color: #cbbbe3; }
+  .chips { display: flex; gap: 8px; margin-top: 24px; flex-wrap: wrap; }
+  .chip { font-size: 14px; font-weight: 600; padding: 6px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--l100); color: var(--deep); }
+  .dark .chip { background: rgba(255, 255, 255, .08); border-color: rgba(208, 162, 247, .25); color: var(--l100); }
+  .shot { position: absolute; right: 56px; top: 54px; width: 820px; border-radius: 14px; overflow: hidden; transform: perspective(1600px) rotateY(-14deg) rotateX(4deg); transform-origin: right center;
+          box-shadow: 0 40px 80px -30px rgba(42, 20, 80, .55), 0 0 0 1px rgba(128, 63, 198, .15); }
+  .shot img { display: block; width: 100%; }
+
+  /* Hero */
+  .hero { width: 1600px; height: 980px; position: relative; border-radius: 28px; overflow: hidden; background: linear-gradient(160deg, var(--l50), var(--l100) 60%, var(--l200)); }
+  .browser { position: absolute; left: 60px; top: 60px; width: 1280px; border-radius: 16px; background: #fff; overflow: hidden; box-shadow: 0 50px 100px -40px rgba(42, 20, 80, .5), 0 0 0 1px rgba(128, 63, 198, .14); }
+  .bar { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #faf7ff; border-bottom: 1px solid #ece4f8; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: #e3d6f5; }
+  .url { margin-left: 18px; flex: 0 0 380px; height: 24px; border-radius: 8px; background: #f1eaff; font-size: 12px; color: var(--muted); display: flex; align-items: center; padding-left: 12px; }
+  .browser img { display: block; width: 100%; }
+  .phone { position: absolute; right: 70px; bottom: 50px; width: 330px; border-radius: 44px; padding: 12px; background: #231a33; box-shadow: 0 50px 90px -30px rgba(30, 10, 60, .65); }
+  .phone img { display: block; width: 100%; border-radius: 34px; }
+  .float { position: absolute; left: 110px; bottom: 56px; display: flex; gap: 14px; }
+  .pill { background: #fff; border-radius: 14px; padding: 14px 18px; box-shadow: 0 20px 40px -20px rgba(42, 20, 80, .45); min-width: 200px; }
+  .pill small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .pill b { font-size: 24px; letter-spacing: -.02em; color: var(--ink); }
+  .pill.violet { background: linear-gradient(135deg, #9554D2, #6133A2); }
+  .pill.violet small, .pill.violet b { color: #fff; }
+
+  /* Palette */
+  .palette { width: 1600px; padding: 40px; border-radius: 28px; background: #fff; border: 1px solid #ece4f8; }
+  .palette h2 { font-size: 22px; color: var(--ink); letter-spacing: -.01em; }
+  .palette p { color: var(--muted); font-size: 15px; margin-top: 6px; }
+  .row { display: grid; grid-template-columns: repeat(4, 1fr) 1.3fr; gap: 14px; margin-top: 24px; }
+  .sw { border-radius: 18px; height: 190px; padding: 18px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .sw b { font-size: 18px; } .sw span { font-size: 14px; opacity: .8; margin-top: 2px; } .sw i { font-style: normal; font-size: 12px; margin-top: 8px; font-weight: 600; }
+  .semantic { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 14px; }
+  .sem { border-radius: 12px; padding: 12px 14px; font-size: 13px; font-weight: 600; }
+</style>
+</head>
+<body>
+  <section id="banner-light">
+    <div class="banner light">
+      <div class="ring a"></div><div class="ring b"></div>
+      <div class="copy">
+        <div class="logo"><img src="../../client/public/favicon.svg" alt=""><b>NexCRM <span>Lite</span></b></div>
+        <h1>Leads in. Deals out.<br><em>Nothing in between lost.</em></h1>
+        <p class="tag">A calm CRM for small sales teams: a drag-and-drop pipeline, one contact book, one task list and a dashboard that shows where the money is.</p>
+        <div class="chips"><span class="chip">Angular 21</span><span class="chip">.NET 10</span><span class="chip">Clean Architecture</span><span class="chip">SQLite</span><span class="chip">Serilog</span></div>
+      </div>
+      <div class="shot"><img src="../../images/03-pipeline-board.png" alt=""></div>
+    </div>
+  </section>
+
+  <section id="banner-dark">
+    <div class="banner dark">
+      <div class="ring a"></div><div class="ring b"></div>
+      <div class="copy">
+        <div class="logo"><img src="../../client/public/favicon.svg" alt=""><b>NexCRM <span>Lite</span></b></div>
+        <h1>Leads in. Deals out.<br><em>Nothing in between lost.</em></h1>
+        <p class="tag">A calm CRM for small sales teams: a drag-and-drop pipeline, one contact book, one task list and a dashboard that shows where the money is.</p>
+        <div class="chips"><span class="chip">Angular 21</span><span class="chip">.NET 10</span><span class="chip">Clean Architecture</span><span class="chip">SQLite</span><span class="chip">Serilog</span></div>
+      </div>
+      <div class="shot"><img src="../../images/03-pipeline-board.png" alt=""></div>
+    </div>
+  </section>
+
+  <section id="hero">
+    <div class="hero">
+      <div class="browser">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">localhost:4300/dashboard</span></div>
+        <img src="../../images/02-dashboard.png" alt="">
+      </div>
+      <div class="phone"><img src="../../images/13-mobile-pipeline.png" alt=""></div>
+    </div>
+  </section>
+
+  <section id="palette">
+    <div class="palette">
+      <h2>Lavender palette</h2>
+      <p>Four Color Hunt swatches as tints, one deep violet on the same hue for everything that must carry white text.</p>
+      <div class="row">
+        <div class="sw" style="background:#F1EAFF;color:#3a2556"><b>#F1EAFF</b><span>Lilac 50</span><i>Selected rows, soft badges</i></div>
+        <div class="sw" style="background:#E5D4FF;color:#3a2556"><b>#E5D4FF</b><span>Lilac 100</span><i>Avatars, borders, text selection</i></div>
+        <div class="sw" style="background:#DCBFFF;color:#3a2556"><b>#DCBFFF</b><span>Lilac 200</span><i>Chart bars, scrollbars</i></div>
+        <div class="sw" style="background:#D0A2F7;color:#2a1a40"><b>#D0A2F7</b><span>Lilac 300</span><i>Accents, funnel top, hover</i></div>
+        <div class="sw" style="background:linear-gradient(135deg,#9554D2,#6133A2);color:#fff"><b>#803FC6</b><span>Brand violet · 6.1 : 1 with white</span><i>Buttons, active nav, primary charts</i></div>
+      </div>
+      <div class="semantic">
+        <div class="sem" style="background:oklch(0.962 0.03 165);color:oklch(0.42 0.1 165)">Won · success</div>
+        <div class="sem" style="background:oklch(0.972 0.035 80);color:oklch(0.5 0.13 55)">Negotiation · warning</div>
+        <div class="sem" style="background:oklch(0.965 0.022 12);color:oklch(0.44 0.16 12)">Lost · danger</div>
+        <div class="sem" style="background:oklch(0.966 0.018 220);color:oklch(0.43 0.09 225)">Proposal · info</div>
+        <div class="sem" style="background:oklch(0.966 0.02 335);color:oklch(0.44 0.15 335)">Task types · orchid</div>
+        <div class="sem" style="background:oklch(0.968 0.01 300);color:oklch(0.38 0.03 300)">Neutral · hue 300</div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

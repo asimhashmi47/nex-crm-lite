@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NexCrm.Api/NexCrm.Api.csproj" />
+    <Project Path="src/NexCrm.Application/NexCrm.Application.csproj" />
+    <Project Path="src/NexCrm.Domain/NexCrm.Domain.csproj" />
+    <Project Path="src/NexCrm.Infrastructure/NexCrm.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NexCrm.IntegrationTests/NexCrm.IntegrationTests.csproj" />
+    <Project Path="tests/NexCrm.UnitTests/NexCrm.UnitTests.csproj" />
+  </Folder>
+</Solution>

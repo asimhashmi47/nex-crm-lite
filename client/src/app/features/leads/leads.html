@@ -1,0 +1,210 @@
+<app-page-header
+  title="Leads"
+  icon="magnet"
+  subtitle="New interest from every channel. Qualify it, then convert it to a deal in one click."
+/>
+
+<app-data-table
+  tableId="leads"
+  title="All leads"
+  endpoint="/api/leads"
+  exportName="leads"
+  [columns]="columns"
+  defaultSort="createdAt"
+  [initialSearch]="initialSearch"
+  [initialFilters]="initialFilters"
+>
+  <ng-template dtToolbar>
+    <button type="button" class="btn btn-primary btn-sm" (click)="openNew()">
+      <lucide-icon name="plus" [size]="14" /> New lead
+    </button>
+  </ng-template>
+
+  <ng-template dtCell="name" let-row>
+    <span class="flex items-center gap-2.5">
+      <app-avatar [name]="row.name" [size]="26" />
+      <span class="min-w-0">
+        <span class="block font-semibold text-ink truncate max-w-44">{{ row.name }}</span>
+        <span class="block text-2xs text-muted truncate max-w-44">{{ row.email }}</span>
+      </span>
+    </span>
+  </ng-template>
+
+  <ng-template dtCell="source" let-row>
+    <span class="text-ink-2">{{ row.source | human }}</span>
+  </ng-template>
+
+  <ng-template dtCell="score" let-row>
+    <span class="flex items-center justify-end gap-2">
+      <span class="w-14 h-1.5 rounded-full bg-subtle overflow-hidden">
+        <span
+          class="block h-full rounded-full"
+          [style.width.%]="row.score"
+          [style.background]="scoreTone(row.score)"
+        ></span>
+      </span>
+      <span class="w-6 text-right font-semibold">{{ row.score }}</span>
+    </span>
+  </ng-template>
+
+  <ng-template dtActions let-row>
+    @if (row.status === 'Converted') {
+      <button type="button" class="btn btn-ghost btn-sm" (click)="openDeal(row)">
+        <lucide-icon name="arrow-up-right" [size]="14" /> Deal
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="btn btn-neutral btn-sm"
+        (click)="convert(row)"
+        [disabled]="row.status !== 'Qualified'"
+        [attr.title]="
+          row.status === 'Qualified'
+            ? 'Create a contact, company and deal'
+            : 'Qualify the lead before converting it'
+        "
+      >
+        <lucide-icon name="sparkles" [size]="14" class="text-brand" /> Convert
+      </button>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon"
+        (click)="edit(row)"
+        [attr.aria-label]="'Edit ' + row.name"
+      >
+        <lucide-icon name="pencil" [size]="15" />
+      </button>
+    }
+    @if (auth.canDelete()) {
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-icon hover:!text-bad-ink"
+        (click)="remove(row)"
+        [attr.aria-label]="'Delete ' + row.name"
+      >
+        <lucide-icon name="trash-2" [size]="15" />
+      </button>
+    }
+  </ng-template>
+</app-data-table>
+
+<app-drawer
+  [open]="drawerOpen()"
+  [title]="editing() ? 'Edit lead' : 'New lead'"
+  [subtitle]="editing()?.name ?? 'Capture new interest'"
+  (close)="close()"
+>
+  <form
+    [formGroup]="form"
+    class="grid grid-cols-2 gap-x-3 gap-y-3.5"
+    (ngSubmit)="save()"
+    id="lead-form"
+    novalidate
+  >
+    <div>
+      <label class="label" for="l-name">Name</label>
+      <input id="l-name" class="input" formControlName="name" [class.invalid]="invalid('name')" />
+      <app-field-error [control]="form.get('name')" label="Name" />
+    </div>
+    <div>
+      <label class="label" for="l-company">Company</label>
+      <input
+        id="l-company"
+        class="input"
+        formControlName="companyName"
+        [class.invalid]="invalid('companyName')"
+      />
+      <app-field-error [control]="form.get('companyName')" label="Company" />
+    </div>
+    <div>
+      <label class="label" for="l-email">Email</label>
+      <input
+        id="l-email"
+        type="email"
+        class="input"
+        formControlName="email"
+        [class.invalid]="invalid('email')"
+      />
+      <app-field-error [control]="form.get('email')" label="Email" />
+    </div>
+    <div>
+      <label class="label" for="l-phone">Phone</label>
+      <input
+        id="l-phone"
+        class="input"
+        formControlName="phone"
+        [class.invalid]="invalid('phone')"
+      />
+      <app-field-error [control]="form.get('phone')" label="Phone" />
+    </div>
+    <div>
+      <label class="label" for="l-source">Source</label>
+      <select id="l-source" class="select" formControlName="source">
+        @for (s of sources; track s) {
+          <option [value]="s">{{ s | human }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label class="label" for="l-value">Estimated value (USD)</label>
+      <input
+        id="l-value"
+        type="number"
+        min="0"
+        step="100"
+        class="input tabular"
+        formControlName="estimatedValue"
+      />
+    </div>
+    <div class="col-span-2">
+      <span class="label">Status</span>
+      <div class="tabs flex-wrap">
+        @for (s of editableStatuses; track s) {
+          <button
+            type="button"
+            class="tab"
+            [class.active]="form.controls.status.value === s"
+            (click)="form.controls.status.setValue(s)"
+          >
+            {{ s }}
+          </button>
+        }
+      </div>
+    </div>
+    <div class="col-span-2">
+      <label class="label flex items-center justify-between" for="l-score"
+        >Lead score
+        <span class="tabular text-brand-ink font-bold">{{ form.controls.score.value }}</span></label
+      >
+      <input
+        id="l-score"
+        type="range"
+        min="0"
+        max="100"
+        class="w-full accent-brand"
+        formControlName="score"
+      />
+      <p class="hint">How likely they are to buy, 0 to 100.</p>
+    </div>
+    <div class="col-span-2">
+      <label class="label" for="l-owner">Owner</label>
+      <select id="l-owner" class="select" formControlName="ownerId">
+        @for (o of owners(); track o.id) {
+          <option [ngValue]="o.id">{{ o.label }}</option>
+        }
+      </select>
+    </div>
+  </form>
+
+  <ng-container drawer-footer>
+    <button type="button" class="btn btn-neutral" (click)="close()">Cancel</button>
+    <button type="submit" form="lead-form" class="btn btn-primary" [disabled]="saving()">
+      @if (saving()) {
+        <span class="spinner"></span>
+      } @else {
+        <lucide-icon name="check" [size]="15" />
+      }
+      {{ editing() ? 'Save changes' : 'Add lead' }}
+    </button>
+  </ng-container>
+</app-drawer>
